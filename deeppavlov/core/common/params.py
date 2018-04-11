@@ -83,6 +83,7 @@ def from_params(params: Dict, **kwargs) -> Component:
                                                     mode=kwargs['mode'])
 
     try:
+        print(cls)
         component = cls(**dict(config_params, **kwargs))
         try:
             _refs[config_params['id']] = component

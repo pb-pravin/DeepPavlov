@@ -9,9 +9,16 @@
     "shuffle": true
   },
   "chainer": {
-    "in": ["context_raw", "question_raw"],
+    "in": ["tokens"],
     "in_y": ["ans_raw", "ans_raw_start"],
     "pipe": [
+
+      {"name": "capprep",
+       "id": "your_cap",
+       "in": ["tokens"],
+       "out": ["cap_features"]}
+
+
       {
         "name": "squad_preprocessor",
         "id": "squad_prepr",
@@ -41,7 +48,7 @@
         "question_limit": "#squad_prepr.question_limit",
         "char_limit": "#squad_prepr.context_limit",
         "fit_on": ["context_tokens", "question_tokens"],
-        "in": ["context_tokens", "question_tokens"],
+        "in": ["cap_features", "question_tokens"],
         "out": ["context_tokens_idxs", "question_tokens_idxs"]
       },
       {

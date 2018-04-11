@@ -21,10 +21,10 @@ from pathlib import Path
 import numpy as np
 
 from deeppavlov.core.common.registry import register
-from deeppavlov.core.common.attributes import check_attr_true
 from deeppavlov.core.common.errors import ConfigError
 from deeppavlov.core.common.log import get_logger
 from deeppavlov.core.models.estimator import Estimator
+from deeppavlov.core.data.utils import zero_pad
 
 log = get_logger(__name__)
 
@@ -33,7 +33,7 @@ log = get_logger(__name__)
 class DefaultVocabulary(Estimator):
     def __init__(self, save_path, load_path, level='token',
                  special_tokens=tuple(), default_token=None,
-                 tokenizer=None, *args, **kwargs):
+                 tokenizer=None, pad_with_zeros=False, *args, **kwargs):
 
         super().__init__(load_path=load_path,
                          save_path=save_path,
@@ -44,6 +44,7 @@ class DefaultVocabulary(Estimator):
         self.preprocess_fn = self._build_preprocess_fn(level, tokenizer)
 
         # TODO check via decorator
+        self._pad_with_zeros = pad_with_zeros
         self.reset()
         if self.load_path:
             self.load()
@@ -79,6 +80,10 @@ class DefaultVocabulary(Estimator):
 
         return preprocess_fn
 
+    @property
+    def len(self):
+        return len(self)
+
     def __getitem__(self, key):
         if isinstance(key, (int, np.integer)):
             return self._i2t[key]
@@ -92,6 +97,10 @@ class DefaultVocabulary(Estimator):
 
     def __len__(self):
         return len(self.freqs)
+
+    def __iter__(self):
+        for n in range(len(self._i2t)):
+            yield self._i2t[n]
 
     def keys(self):
         return (k for k, v in self.freqs.most_common())
@@ -140,7 +149,13 @@ class DefaultVocabulary(Estimator):
             self.freqs[token] += cnt
 
     def __call__(self, samples, **kwargs):
-        return [self[s] for s in samples]
+        vocabed = []
+        for utt in samples:
+            vocabed.append([self[s] for s in utt])
+        if isinstance(samples[0][0], str):
+            if self._pad_with_zeros:
+                vocabed = zero_pad(vocabed)
+        return vocabed
 
     def save(self):
         log.info("[saving vocabulary to {}]".format(self.save_path))
@@ -151,7 +166,6 @@ class DefaultVocabulary(Estimator):
                 cnt = self.freqs[token]
                 f.write('{}\t{:d}\n'.format(token, cnt))
 
-    # @check_path_exists()
     def load(self):
         if self.load_path:
             if self.load_path.is_file():
